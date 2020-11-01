@@ -3,7 +3,6 @@ extern crate clap;
 extern crate curl;
 extern crate serde_json;
 
-//use chrono::format::format;
 use chrono::prelude::*;
 use chrono::DateTime;
 use clap::{Arg, App};
@@ -22,6 +21,10 @@ impl Handler for Collector {
 }
 
 fn get_event(event: &Value, code: &str) {
+    if !event["locationName"].is_string() {
+        return;
+    }
+
     let desc = event["description"]["fi"].as_str().unwrap();
     let location = event["locationName"].as_str().unwrap();
     let timestamp = event["timestamp"].as_str().unwrap();
@@ -42,7 +45,12 @@ fn get_state(code: &str, multiple: &bool) {
     easy.url(&url).unwrap();
     easy.perform().unwrap();
 
-    assert_eq!(easy.response_code().unwrap(), 200);
+    let response_code = easy.response_code().unwrap();
+    if response_code != 200 {
+        println!("Osoitetta ei löytynyt: {}", response_code);
+        return;
+    }
+
     let easy_ref = easy.get_ref();
     let raw_content = std::str::from_utf8(&easy_ref.0).unwrap();
     let content: Value = serde_json::from_str(raw_content).unwrap();
